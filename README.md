@@ -1,1 +1,1 @@
-# A_M_Apartments
+This is an AirBnb booking website.
