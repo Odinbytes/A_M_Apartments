@@ -37,7 +37,7 @@ jobs:
           git config --global user.name "${{ secrets.GH_AUTHOR_NAME }}"
           git config --global user.email "${{ secrets.GH_AUTHOR_EMAIL }}"
 
-      - name: Make randomized commits (supports backfill)
+      - name: Make randomized commits (spread out across day, supports backfill)
         env:
           BACKFILL_DAYS: ${{ github.event.inputs.backfill_days || '0' }}
           MIN_COMMITS: ${{ github.event.inputs.min_commits || '7' }}
@@ -51,13 +51,13 @@ jobs:
 
           echo "Backfill days: $backfill  min:$minc max:$maxc"
 
-          # Loop from $backfill down to 0 (0 = today)
           for offset in $(seq ${backfill} -1 0); do
             day=$(date -u -d "$offset days ago" +%Y-%m-%d)
             range=$((maxc - minc + 1))
             commits=$(( (RANDOM % range) + minc ))
             echo "Creating $commits commits for $day"
 
+            # Pick random times across the 24 hours (avoid clustering)
             for i in $(seq 1 $commits); do
               hh=$(printf "%02d" $(( RANDOM % 24 )))
               mm=$(printf "%02d" $(( RANDOM % 60 )))
@@ -67,7 +67,6 @@ jobs:
               echo "Automated entry ${ts} - $RANDOM" >> "$FILE"
               git add "$FILE"
               GIT_AUTHOR_DATE="$ts" GIT_COMMITTER_DATE="$ts" git commit -m "chore: automated commit ${ts}" || echo "no changes"
-              sleep 1
             done
           done
 
