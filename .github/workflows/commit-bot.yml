@@ -2,7 +2,7 @@ name: Commit Bot
 
 on:
   schedule:
-    # Runs every day at 06:00 UTC (09:00 Nairobi). Change cron if you want.
+    # Runs every day at 06:00 UTC (09:00 Nairobi). Script itself decides rest days.
     - cron: '0 6 * * *'
   workflow_dispatch:
     inputs:
@@ -37,7 +37,7 @@ jobs:
           git config --global user.name "${{ secrets.GH_AUTHOR_NAME }}"
           git config --global user.email "${{ secrets.GH_AUTHOR_EMAIL }}"
 
-      - name: Make randomized commits (spread out across day, supports backfill)
+      - name: Make randomized commits (with rest days + random times)
         env:
           BACKFILL_DAYS: ${{ github.event.inputs.backfill_days || '0' }}
           MIN_COMMITS: ${{ github.event.inputs.min_commits || '7' }}
@@ -53,12 +53,20 @@ jobs:
 
           for offset in $(seq ${backfill} -1 0); do
             day=$(date -u -d "$offset days ago" +%Y-%m-%d)
+
+            # Adjust this value ↓ to control active days
+            # 2/10 (~20%) chance to skip → about 5–6 days active per week
+            if [ $((RANDOM % 10)) -lt 2 ]; then
+              echo "Skipping $day (rest day)"
+              continue
+            fi
+
             range=$((maxc - minc + 1))
             commits=$(( (RANDOM % range) + minc ))
             echo "Creating $commits commits for $day"
 
-            # Pick random times across the 24 hours (avoid clustering)
             for i in $(seq 1 $commits); do
+              # Spread commits randomly across the day
               hh=$(printf "%02d" $(( RANDOM % 24 )))
               mm=$(printf "%02d" $(( RANDOM % 60 )))
               ss=$(printf "%02d" $(( RANDOM % 60 )))
@@ -67,6 +75,7 @@ jobs:
               echo "Automated entry ${ts} - $RANDOM" >> "$FILE"
               git add "$FILE"
               GIT_AUTHOR_DATE="$ts" GIT_COMMITTER_DATE="$ts" git commit -m "chore: automated commit ${ts}" || echo "no changes"
+              sleep 1
             done
           done
 
