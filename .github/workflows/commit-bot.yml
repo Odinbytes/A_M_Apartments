@@ -2,7 +2,7 @@ name: Commit Bot
 
 on:
   schedule:
-    # Runs every day at 06:00 UTC (09:00 Nairobi). Edit cron if you want another time.
+    # Runs every day at 06:00 UTC (09:00 Nairobi). Change cron if you want.
     - cron: '0 6 * * *'
   workflow_dispatch:
     inputs:
@@ -32,7 +32,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set git identity (author)
+      - name: Set git identity
         run: |
           git config --global user.name "${{ secrets.GH_AUTHOR_NAME }}"
           git config --global user.email "${{ secrets.GH_AUTHOR_EMAIL }}"
@@ -57,6 +57,7 @@ jobs:
             range=$((maxc - minc + 1))
             commits=$(( (RANDOM % range) + minc ))
             echo "Creating $commits commits for $day"
+
             for i in $(seq 1 $commits); do
               hh=$(printf "%02d" $(( RANDOM % 24 )))
               mm=$(printf "%02d" $(( RANDOM % 60 )))
@@ -65,11 +66,11 @@ jobs:
 
               echo "Automated entry ${ts} - $RANDOM" >> "$FILE"
               git add "$FILE"
-              # set author+committer date to the chosen timestamp
-              GIT_AUTHOR_DATE="$ts" GIT_COMMITTER_DATE="$ts" git commit -m "chore: automated commit ${ts}" || echo "no changes to commit"
+              GIT_AUTHOR_DATE="$ts" GIT_COMMITTER_DATE="$ts" git commit -m "chore: automated commit ${ts}" || echo "no changes"
               sleep 1
             done
           done
 
-          # push to the current branch (the workflow runs on default branch by schedule)
-          git push origin HEAD
+      - name: Push commits
+        run: |
+          git push origin HEAD:main
